@@ -268,6 +268,20 @@ def main():
               f'Train Accuracy: {train_epoch_accuracy:.4f}, '
               f'Val Loss: {val_epoch_loss:.4f}, '
               f'Val Accuracy: {val_epoch_accuracy:.4f}')
+    with open("values.pkl", 'wb') as f:
+        pickle.dump({
+            "train_loss": train_loss,
+            "val_loss" : val_loss,
+            "num_epochs" : num_epochs,
+            "train_accuracy" : train_accuracy,
+            "val_accuracy" : val_accuracy,
+            "num_epochs" : num_epochs,
+            "model": model,
+            "test_load": test_load,
+            "device": device,
+            "criterion": criterion,
+            "classes": classes
+        }, f)
     plot_loss(train_loss, val_loss, num_epochs)
     plot_accuracy(train_accuracy, val_accuracy, num_epochs)
 
