@@ -15,8 +15,7 @@ import numpy as np
 import torch
 import torchvision.transforms as t
 from medmnist import TissueMNIST
-
-from sklearn.preprocessing import label_binarize
+from visualise import make_confusion_matrix, plot_loss, plot_accuracy, make_roc_curve
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 from transformers import ViTModel, ViTConfig

@@ -3,6 +3,7 @@ from sklearn.metrics import (confusion_matrix, ConfusionMatrixDisplay,
                              roc_curve, auc)
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.preprocessing import label_binarize
 
 def make_confusion_matrix(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader,
                              device:torch.device, classes:list):
