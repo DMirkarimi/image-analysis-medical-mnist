@@ -21,6 +21,8 @@ from tqdm import tqdm
 from transformers import ViTModel, ViTConfig
 import pickle
 
+
+
 def settings():
     """
     Sets the random seed for reproducibility and configures PyTorch
@@ -99,7 +101,7 @@ class DatasetWrapper(Dataset):
         self.labels = dataset.labels.squeeze()
         self.transform = transform
 
-        mask = self.labels < 5
+        mask = self.labels < 3
         self.imgs = self.imgs[mask]
         self.labels = self.labels[mask]
 
@@ -235,12 +237,13 @@ def eval_once(model:torch.nn.Module, data_loader:DataLoader,
     return loss / total, correct / total
 
 def main():
+    number_of_classes = 3
     settings()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     train_load, test_load, validation_load = load_data(batch_size=32)
     print(f'Train dataset size: {len(train_load.dataset)}')
-    model = Model(num_classes=5).to(device)
+    model = Model(num_classes=number_of_classes).to(device)
     print(f'Model initialized with '
           f'{sum(p.numel() for p in model.parameters() if p.requires_grad)} '
           f'trainable parameters.')
@@ -268,6 +271,9 @@ def main():
               f'Train Accuracy: {train_epoch_accuracy:.4f}, '
               f'Val Loss: {val_epoch_loss:.4f}, '
               f'Val Accuracy: {val_epoch_accuracy:.4f}')
+    classes = []
+    for i in range(number_of_classes-1):
+        classes.append(f"Class {i}")
     with open("values.pkl", 'wb') as f:
         pickle.dump({
             "train_loss": train_loss,
@@ -289,9 +295,8 @@ def main():
         model, test_load, device, criterion
     )
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
-    classes = ['Class 0', 'Class 1', 'Class 2', 'Class 3', 'Class 4']
     make_confusion_matrix(model, test_load, device, classes)
-    make_roc_curve(model, test_load, device, num_classes=5)
+    make_roc_curve(model, test_load, device, num_classes=3)
 
 if __name__ == '__main__':
     main()
