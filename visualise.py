@@ -1,3 +1,9 @@
+"""
+This module provides functions to visualize the performance of a PyTorch model.
+
+Written by: Dariush Mirkarimi, David Straat
+Modified on: 2025-06-20
+"""
 import torch
 from sklearn.metrics import (confusion_matrix, ConfusionMatrixDisplay,
                              roc_curve, auc)
@@ -5,8 +11,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import label_binarize
 
-def make_confusion_matrix(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader,
-                             device:torch.device, classes:list):
+
+def make_confusion_matrix(model: torch.nn.Module,
+                          data_loader: torch.utils.data.DataLoader,
+                          device: torch.device, classes: list):
     """
     Generates and displays a confusion matrix for the model's predictions
     on the provided data loader.
@@ -40,8 +48,10 @@ def make_confusion_matrix(model:torch.nn.Module, data_loader:torch.utils.data.Da
     plt.title('Confusion Matrix')
     plt.show()
 
-def make_roc_curve(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader,
-              device:torch.device, num_classes:int):
+
+def make_roc_curve(model: torch.nn.Module,
+                   data_loader: torch.utils.data.DataLoader,
+                   device: torch.device, num_classes: int):
     """
     Generates and displays the ROC curve for each class in a multi-class
     classification problem. This function evaluates the model on the provided
@@ -92,7 +102,9 @@ def make_roc_curve(model:torch.nn.Module, data_loader:torch.utils.data.DataLoade
     plt.legend(loc='lower right')
     plt.show()
 
-def plot_loss(train_loss:list, val_loss:list, num_epochs:int):
+
+# noinspection GrazieInspection
+def plot_loss(train_loss: list, val_loss: list, num_epochs: int):
     """
     Plots and displays the training and validation loss curves.
     :param train_loss: List of training loss values for each epoch.
@@ -111,7 +123,8 @@ def plot_loss(train_loss:list, val_loss:list, num_epochs:int):
     plt.legend()
     plt.show()
 
-def plot_accuracy(train_accuracy:list, val_accuracy:list, num_epochs:int):
+
+def plot_accuracy(train_accuracy: list, val_accuracy: list, num_epochs: int):
     """
     Plots and displays the training and validation accuracy curves.
     :param train_accuracy: 
@@ -132,5 +145,3 @@ def plot_accuracy(train_accuracy:list, val_accuracy:list, num_epochs:int):
     plt.title('Accuracy Curve')
     plt.legend()
     plt.show()
-
-    

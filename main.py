@@ -5,7 +5,7 @@ It includes data loading, training, evaluation, and visualization of results.
 It uses PyTorch and the MedMNIST library for dataset handling.
 
 Written by: David Straat, Dariush Mirkarimi
-Modified on: 2025-05-27
+Modified on: 2025-06-20
 """
 
 import random
@@ -15,12 +15,12 @@ import numpy as np
 import torch
 import torchvision.transforms as t
 from medmnist import TissueMNIST
-from visualise import make_confusion_matrix, plot_loss, plot_accuracy, make_roc_curve
+from visualise import make_confusion_matrix, plot_loss, plot_accuracy, \
+    make_roc_curve
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 from transformers import ViTModel, ViTConfig
 import pickle
-
 
 
 def settings():
@@ -34,8 +34,21 @@ def settings():
     random.seed(1)
     torch.backends.cudnn.deterministic = True
 
+
 class Model(torch.nn.Module):
-    def __init__(self, num_classes:int=5):
+    """
+    A Vision Transformer (ViT) model adapted for the TissueMNIST dataset.
+    This model uses a pre-trained ViT model and modifies it to fit the
+    specific requirements of the TissueMNIST dataset, including changing the
+    input image size and the number of hidden layers.
+
+    The model consists of a ViT backbone followed by a classifier that
+    outputs logits for the specified number of classes.
+    :param num_classes: The number of output classes for classification.
+    :type num_classes: int
+    """
+
+    def __init__(self, num_classes: int = 3):
         super().__init__()
         config = ViTConfig.from_pretrained('google/vit-base-patch16-224')
         config.image_size = 64
@@ -53,7 +66,7 @@ class Model(torch.nn.Module):
         new_spatial_embed = torch.nn.functional.interpolate(
             spatial_embed, size=(new_size, new_size), mode='bilinear',
             align_corners=False
-        ). permute(0, 2, 3, 1).reshape(1, new_size * new_size, -1)
+        ).permute(0, 2, 3, 1).reshape(1, new_size * new_size, -1)
         new_embed = torch.cat(
             [cls_embed, new_spatial_embed],
             dim=1
@@ -78,9 +91,7 @@ class Model(torch.nn.Module):
         )
         self.vit.embeddings.position_embeddings = torch.nn.Parameter(new_embed)
 
-
-
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the model.
         :param x: torch.Tensor of shape (batch_size, 1, 64, 64). This is a
@@ -95,8 +106,18 @@ class Model(torch.nn.Module):
         logits = self.classifier(outputs.last_hidden_state[:, 0])
         return logits
 
+
 class DatasetWrapper(Dataset):
-    def __init__(self, dataset:TissueMNIST, transform=None):
+    """
+    A wrapper for the TissueMNIST dataset that filters out classes
+    with labels greater than or equal to 3. It also applies a transformation
+    to the images if provided.
+
+    :param dataset: The TissueMNIST dataset to wrap.
+    :type dataset: TissueMNIST
+    """
+
+    def __init__(self, dataset: TissueMNIST, transform=None):
         self.imgs = dataset.imgs
         self.labels = dataset.labels.squeeze()
         self.transform = transform
@@ -105,19 +126,21 @@ class DatasetWrapper(Dataset):
         self.imgs = self.imgs[mask]
         self.labels = self.labels[mask]
 
-    def __len__(self)->int:
+    def __len__(self) -> int:
         return len(self.labels)
 
-    def __getitem__(self, idx)->tuple:
+    def __getitem__(self, idx) -> tuple:
         image = self.imgs[idx]
         label = self.labels[idx]
 
-        image = torch.tensor(image).float().unsqueeze(0)/255.0
+        image = torch.tensor(image).float().unsqueeze(0) / 255.0
         if self.transform:
             image = self.transform(image)
         return image, int(label)
 
-def load_data(batch_size:int=64)-> tuple[DataLoader, DataLoader, DataLoader]:
+
+def load_data(batch_size: int = 64) -> tuple[
+    DataLoader, DataLoader, DataLoader]:
     """
     Loads the TissueMNIST dataset and prepares DataLoaders for training,
     validation, and testing.
@@ -159,14 +182,16 @@ def load_data(batch_size:int=64)-> tuple[DataLoader, DataLoader, DataLoader]:
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
                               shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size,shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size,
+                             shuffle=False)
     validation_loader = DataLoader(validation_dataset, batch_size=batch_size,
                                    shuffle=False)
     return train_loader, test_loader, validation_loader
 
-def train_once(model:torch.nn.Module, data_loader:DataLoader,
-              optimizer:torch.optim.Optimizer, device:torch.device,
-              criterion:torch.nn.CrossEntropyLoss) -> tuple[
+
+def train_once(model: torch.nn.Module, data_loader: DataLoader,
+               optimizer: torch.optim.Optimizer, device: torch.device,
+               criterion: torch.nn.CrossEntropyLoss) -> tuple[
     float, float]:
     """
     Trains the model for one epoch on the provided data loader.
@@ -203,8 +228,9 @@ def train_once(model:torch.nn.Module, data_loader:DataLoader,
     import time
     return loss / total, correct / total
 
-def eval_once(model:torch.nn.Module, data_loader:DataLoader,
-              device:torch.device, criterion:torch.nn.CrossEntropyLoss) -> (
+
+def eval_once(model: torch.nn.Module, data_loader: DataLoader,
+              device: torch.device, criterion: torch.nn.CrossEntropyLoss) -> (
         tuple[float, float]):
     """
     Evaluates the model on the provided data loader.
@@ -236,24 +262,49 @@ def eval_once(model:torch.nn.Module, data_loader:DataLoader,
 
     return loss / total, correct / total
 
+
 def main():
-    number_of_classes = 3
+    # noinspection GrazieInspection
+    """
+        Main function to set up the environment, load data, initialize the model,
+        and train the model on the TissueMNIST dataset. It also evaluates the model
+        on the test set and visualizes the results including loss curves, accuracy,
+        confusion matrix, and ROC curves.
+        :return: None
+        :rtype: None
+        :raises ValueError: If the number of classes is not set correctly.
+        """
+    number_of_classes = 3  # Set the number of classes for TissueMNIST
+
+    # Checks if the number of classes is a positive integer
+    if number_of_classes <= 0 or not isinstance(number_of_classes, int):
+        raise ValueError("Number of classes must be a positive integer.")
     settings()
+
+    # Uses Cuda if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+
+    # Loads the data
     train_load, test_load, validation_load = load_data(batch_size=32)
     print(f'Train dataset size: {len(train_load.dataset)}')
+
+    # Initializes the model
     model = Model(num_classes=number_of_classes).to(device)
     print(f'Model initialized with '
           f'{sum(p.numel() for p in model.parameters() if p.requires_grad)} '
           f'trainable parameters.')
+
+    # Starts training
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss()
     num_epochs = 5
     print(f'Starting training for {num_epochs} epochs...')
     train_loss, train_accuracy, val_loss, val_accuracy = [], [], [], []
+
+    # Training loop
     for epoch in range(num_epochs):
-        print(f'Starting epoch {epoch+1}/{num_epochs}')
+        print(f'Starting epoch {epoch + 1}/{num_epochs}')
         train_epoch_loss, train_epoch_accuracy = train_once(
             model, train_load, optimizer, device, criterion)
         val_epoch_loss, val_epoch_accuracy = eval_once(
@@ -266,28 +317,30 @@ def main():
         import time
         with open(f'model{int(time.time())}.pkl', 'wb') as f:
             pickle.dump(model.state_dict(), f)
-        print(f'Epoch {epoch+1}/{num_epochs}, '
+        print(f'Epoch {epoch + 1}/{num_epochs}, '
               f'Train Loss: {train_epoch_loss:.4f}, '
               f'Train Accuracy: {train_epoch_accuracy:.4f}, '
               f'Val Loss: {val_epoch_loss:.4f}, '
               f'Val Accuracy: {val_epoch_accuracy:.4f}')
     classes = []
-    for i in range(number_of_classes-1):
+    for i in range(number_of_classes - 1):
         classes.append(f"Class {i}")
+    # Exporting the results just in case
     with open("values.pkl", 'wb') as f:
         pickle.dump({
             "train_loss": train_loss,
-            "val_loss" : val_loss,
-            "num_epochs" : num_epochs,
-            "train_accuracy" : train_accuracy,
-            "val_accuracy" : val_accuracy,
-            "num_epochs" : num_epochs,
+            "val_loss": val_loss,
+            "num_epochs": num_epochs,
+            "train_accuracy": train_accuracy,
+            "val_accuracy": val_accuracy,
             "model": model,
             "test_load": test_load,
             "device": device,
             "criterion": criterion,
             "classes": classes
         }, f)
+
+    # Plotting the results
     plot_loss(train_loss, val_loss, num_epochs)
     plot_accuracy(train_accuracy, val_accuracy, num_epochs)
 
@@ -296,7 +349,8 @@ def main():
     )
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
     make_confusion_matrix(model, test_load, device, classes)
-    make_roc_curve(model, test_load, device, num_classes=3)
+    make_roc_curve(model, test_load, device, num_classes=number_of_classes)
+
 
 if __name__ == '__main__':
     main()
