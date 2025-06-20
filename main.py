@@ -117,14 +117,15 @@ class DatasetWrapper(Dataset):
     :type dataset: TissueMNIST
     """
 
-    def __init__(self, dataset: TissueMNIST, transform=None):
+    def __init__(self, dataset: TissueMNIST, number_of_samples: int = 1000,
+    transform=None):
         self.imgs = dataset.imgs
         self.labels = dataset.labels.squeeze()
         self.transform = transform
 
         mask = self.labels < 3
-        self.imgs = self.imgs[mask]
-        self.labels = self.labels[mask]
+        self.imgs = self.imgs[mask][:number_of_samples]
+        self.labels = self.labels[mask][:number_of_samples]
 
     def __len__(self) -> int:
         return len(self.labels)
@@ -139,7 +140,7 @@ class DatasetWrapper(Dataset):
         return image, int(label)
 
 
-def load_data(batch_size: int = 64) -> tuple[
+def load_data(batch_size: int = 64, number_of_samples: int = 1000) -> tuple[
     DataLoader, DataLoader, DataLoader]:
     """
     Loads the TissueMNIST dataset and prepares DataLoaders for training,
@@ -176,9 +177,10 @@ def load_data(batch_size: int = 64) -> tuple[
         # t.Normalize(mean=[0.5], std=[0.5])
     ])
 
-    train_dataset = DatasetWrapper(train_ds, transform=transform)
-    test_dataset = DatasetWrapper(test_ds)
-    validation_dataset = DatasetWrapper(validation_ds)
+    train_dataset = DatasetWrapper(train_ds, number_of_samples,
+                                   transform=transform)
+    test_dataset = DatasetWrapper(test_ds, number_of_samples)
+    validation_dataset = DatasetWrapper(validation_ds, number_of_samples)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
                               shuffle=True)
@@ -275,7 +277,7 @@ def main():
         :raises ValueError: If the number of classes is not set correctly.
         """
     number_of_classes = 3  # Set the number of classes for TissueMNIST
-
+    number_of_samples = 8000 # Set the number of samples
     # Checks if the number of classes is a positive integer
     if number_of_classes <= 0 or not isinstance(number_of_classes, int):
         raise ValueError("Number of classes must be a positive integer.")
@@ -286,7 +288,10 @@ def main():
     print(f"Using device: {device}")
 
     # Loads the data
-    train_load, test_load, validation_load = load_data(batch_size=32)
+    train_load, test_load, validation_load = load_data(
+        batch_size=32,
+        number_of_samples=number_of_samples
+    )
     print(f'Train dataset size: {len(train_load.dataset)}')
 
     # Initializes the model
